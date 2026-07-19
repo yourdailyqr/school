@@ -359,33 +359,23 @@ function navLabel(offset) {
 }
 
 function checkGate() {
+  // Pure rolling 24-hour elapsed-time check — no calendar day logic at all.
+  // If no record exists: no gate (first ever open).
+  // If less than 24 hours have elapsed since last open: no gate.
+  // If 24+ hours have elapsed: show gate.
   try {
     const stored = localStorage.getItem(GATE_KEY);
     if (!stored) return false;
-    const { date, ts } = JSON.parse(stored);
-    const todayStr = new Date().toDateString();
-    // Always allow on the same calendar day — re-opens, refreshes, previews
-    if (date === todayStr) return false;
-    // Different calendar day: block only if fewer than 24 hours have elapsed
-    if (Date.now() - ts < 24 * 3600 * 1000) return true;
-    // 24+ hours have passed — clear and allow fresh view
-    localStorage.removeItem(GATE_KEY);
-    return false;
+    const { ts } = JSON.parse(stored);
+    return (Date.now() - ts) >= 24 * 3600 * 1000;
   } catch(e) { return false; }
 }
 
 function setGate() {
+  // Always overwrite with current timestamp on every fresh open.
+  // This resets the 24-hour clock so the very next open is always free.
   try {
-    const stored = localStorage.getItem(GATE_KEY);
-    if (stored) {
-      const { date } = JSON.parse(stored);
-      // Already recorded today — don't overwrite the timestamp
-      if (date === new Date().toDateString()) return;
-    }
-    localStorage.setItem(GATE_KEY, JSON.stringify({
-      date: new Date().toDateString(),
-      ts: Date.now()
-    }));
+    localStorage.setItem(GATE_KEY, JSON.stringify({ ts: Date.now() }));
   } catch(e) {}
 }
 
