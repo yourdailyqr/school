@@ -145,7 +145,8 @@
   #nav-row {
     display: flex;
     align-items: center;
-    gap: 20px;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .nav-btn {
@@ -178,7 +179,7 @@
 
   #footer-link {
     font-family: 'Nunito', sans-serif;
-    font-size: 18px;
+    font-size: 12px;
     color: rgba(255,255,255,0.5);
     letter-spacing: 0.07em;
     text-decoration: none;
@@ -238,7 +239,7 @@
   <div id="gate-content">
     <div id="gate-title">The Daily Schoolhouse Briefing</div>
     <div id="gate-msg">Oops. It's been a little while. Looks like you need to rescan the QR code to see today's briefing.</div>
-    <button onclick="localStorage.removeItem('dsb_gate_v1'); location.reload();" style="margin-top:6px; background:none; border:1px solid #ccc; border-radius:20px; padding:6px 18px; font-size:11px; color:#aaa; cursor:pointer; font-family:'Nunito',sans-serif;">Tap to reset &amp; preview</button>
+    <button onclick="localStorage.removeItem('dsb_gate_v1'); sessionStorage.removeItem('dsb_session_v1'); location.reload();" style="margin-top:6px; background:none; border:1px solid #ccc; border-radius:20px; padding:6px 18px; font-size:11px; color:#aaa; cursor:pointer; font-family:'Nunito',sans-serif;">Tap to reset &amp; preview</button>
     <div id="gate-footer">www.yourdailyqr.com</div>
   </div>
 </div>
@@ -366,21 +367,42 @@ function navLabel(offset) {
 
 /* =========================================================
    SCAN GATE LOGIC — Rolling 72-Hour Inactivity Timer
-   1. No stamp -> set stamp now, show content.
-   2. Stamp exists, < 72h since last view -> refresh stamp, show content.
-   3. Stamp exists, >= 72h since last view -> clear stamp, show gate,
-      block content. Re-scanning the QR code / retyping the URL reloads
-      the page with no stamp present, so rule 1 applies again.
-   This does not rely on sessionStorage: a rescan is just another page
-   load, and mobile browsers often reuse the same tab (so sessionStorage
-   would already be set) — the rolling localStorage timestamp is the
-   only reliable signal here.
+
+   Rule 1: A fresh session (QR scan, freshly typed/opened URL, or a
+           reload — anything where sessionStorage is empty) ALWAYS
+           shows content immediately, no matter how much time has
+           passed. It also (re)stamps localStorage so the idle timer
+           restarts from this visit.
+   Rule 2: The gate only appears for an EXISTING tab/window that is
+           already mid-session (sessionStorage flag already set) and
+           has been sitting idle for 72+ hours since the last stamp.
+           That check runs via the visibilitychange listener below,
+           which fires when a backgrounded tab is brought back into
+           view without a full page load.
+
+   sessionStorage is what makes rule 1 and rule 2 distinguishable:
+   it's empty on every genuinely fresh load, but persists for the
+   lifetime of an already-open tab — which is exactly "existing tab
+   or window" in rule 2.
 ========================================================= */
 const GATE_HOURS = 72;
 const GATE_MS = GATE_HOURS * 60 * 60 * 1000;
+const SESSION_KEY = 'dsb_session_v1';
 
-function passesScanGate() {
+function checkGate() {
   const now = Date.now();
+
+  let freshSession = true;
+  try { freshSession = sessionStorage.getItem(SESSION_KEY) === null; } catch (e) { freshSession = true; }
+
+  if (freshSession) {
+    // Rule 1 — fresh scan/open/reload: always show content, always restamp.
+    try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (e) {}
+    try { localStorage.setItem(GATE_KEY, String(now)); } catch (e) {}
+    return true;
+  }
+
+  // Rule 2 — existing tab/window already mid-session.
   let stamp = null;
   try { stamp = localStorage.getItem(GATE_KEY); } catch (e) { stamp = null; }
 
@@ -449,7 +471,7 @@ function render(offset) {
 }
 
 // Boot
-let scanGateOpen = passesScanGate();
+let scanGateOpen = checkGate();
 
 function showGateScreen() {
   document.getElementById('app').style.display = 'none';
@@ -460,7 +482,7 @@ function showGateScreen() {
    left open in the background (not reloaded) for 72+ hours. */
 document.addEventListener('visibilitychange', function () {
   if (document.hidden || !scanGateOpen) return;
-  if (!passesScanGate()) {
+  if (!checkGate()) {
     scanGateOpen = false;
     showGateScreen();
   }
