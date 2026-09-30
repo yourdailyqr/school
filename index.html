@@ -138,22 +138,23 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 8px 16px 14px;
+    padding: 8px 14px 14px;
     gap: 6px;
   }
 
   #nav-row {
     display: flex;
     align-items: center;
-    gap: 20px;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .nav-btn {
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.3);
     color: #fff;
-    font-size: 16px;
-    width: 36px; height: 36px;
+    font-size: 20px;
+    width: 44px; height: 44px;
     border-radius: 50%;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
@@ -178,20 +179,15 @@
 
   #footer-link {
     font-family: 'Nunito', sans-serif;
-    font-size: 18px;
+    font-size: 12px;
     color: rgba(255,255,255,0.5);
     letter-spacing: 0.07em;
     text-decoration: none;
   }
 
-  /* ── GATE SCREEN ── */
-  
 </style>
 </head>
 <body>
-
-
-
 
 <div id="app">
   <div id="card">
@@ -313,7 +309,6 @@ function navLabel(offset) {
   return Math.abs(offset) + ' DAYS AGO';
 }
 
-
 function autoSize(el, container, minPx, maxPx) {
   // Binary search for largest font size that fits
   let lo = minPx, hi = maxPx, best = minPx;
@@ -362,33 +357,32 @@ function render(offset) {
   document.getElementById('btn-prev').disabled = offset <= -MAX_LOOKBACK;
   document.getElementById('btn-next').disabled = offset >= 0;
 }
-
 // Boot
 render(0);
 
-  document.getElementById('btn-prev').addEventListener('click', () => {
-    if (currentOffset > -MAX_LOOKBACK) { currentOffset--; render(currentOffset); }
-  });
-  document.getElementById('btn-next').addEventListener('click', () => {
-    if (currentOffset < 0) { currentOffset++; render(currentOffset); }
-  });
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (currentOffset > -MAX_LOOKBACK) { currentOffset--; render(currentOffset); }
+});
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentOffset < 0) { currentOffset++; render(currentOffset); }
+});
 
-  let tx = 0;
-  const card = document.getElementById('card');
-  card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
-  card.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - tx;
-    if (Math.abs(dx) > 50) {
-      if (dx < 0 && currentOffset > -MAX_LOOKBACK) { currentOffset--; render(currentOffset); }
-      else if (dx > 0 && currentOffset < 0) { currentOffset++; render(currentOffset); }
-    }
-  }, {passive:true});
+let tx = 0;
+const card = document.getElementById('card');
+card.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, {passive:true});
+card.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 50) {
+    if (dx < 0 && currentOffset > -MAX_LOOKBACK) { currentOffset--; render(currentOffset); }
+    else if (dx > 0 && currentOffset < 0) { currentOffset++; render(currentOffset); }
+  }
+}, {passive:true});
 
-  window.addEventListener('resize', () => {
-    const txt = document.getElementById('entry-text');
-    const ca = document.getElementById('content-area');
-    autoSize(txt, ca, 13, 41);
-  });
+window.addEventListener('resize', () => {
+  const txt = document.getElementById('entry-text');
+  const ca = document.getElementById('content-area');
+  autoSize(txt, ca, 13, 41);
+});
 </script>
 </body>
 </html>
